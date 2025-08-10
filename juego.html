@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz: Terapias Alternativas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            transition: all 0.5s ease-in-out;
+        }
+        .progress-bar {
+            background-color: #e5e7eb;
+            height: 1.25rem;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        .progress {
+            height: 100%;
+            background-color: #3b82f6;
+            width: 0;
+            transition: width 0.5s ease-in-out;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .btn {
+            background-color: #6366f1;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease-in-out, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #4f46e5;
+            transform: translateY(-2px);
+        }
+        .option-btn {
+            width: 100%;
+            text-align: left;
+            background-color: #f9fafb;
+            border: 2px solid #e5e7eb;
+            color: #1f2937;
+            font-weight: 500;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .option-btn:hover:not(.disabled) {
+            background-color: #eff6ff;
+            border-color: #93c5fd;
+        }
+        .option-btn.correct {
+            background-color: #d1fae5;
+            border-color: #10b981;
+            color: #065f46;
+            animation: pulse-correct 1s infinite;
+        }
+        .option-btn.wrong {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+            animation: shake 0.5s;
+        }
+        .explanation {
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 2px solid #fcd34d;
+            margin-top: 1rem;
+        }
+        .disabled {
+            pointer-events: none;
+        }
+        @keyframes pulse-correct {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<div class="game-container flex flex-col items-center">
+    <!-- Pantalla de inicio -->
+    <div id="start-screen" class="text-center">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">Quiz: Terapias Alternativas</h1>
+        <p class="text-gray-600 text-lg mb-8">Pon a prueba tu conocimiento sobre el documento "Terapias alternativas, ¿la cuarta fuerza de la psicología?".</p>
+        <button id="start-btn" class="btn">¡Empezar!</button>
+    </div>
+
+    <!-- Pantalla del juego -->
+    <div id="game-screen" class="hidden w-full">
+        <div class="flex justify-between items-center mb-4 text-gray-600 font-semibold">
+            <span id="question-counter">Pregunta 1 de 10</span>
+            <span id="score">Puntaje: 0</span>
+        </div>
+        <div class="progress-bar">
+            <div id="progress" class="progress"></div>
+        </div>
+        <h2 id="question-text" class="text-2xl font-bold text-gray-800 my-8 text-center"></h2>
+        <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Botones de opciones se insertarán aquí -->
+        </div>
+        <div id="feedback-container" class="mt-8 hidden">
+            <div id="explanation-box" class="explanation hidden"></div>
+            <button id="next-btn" class="btn w-full mt-4 hidden">Siguiente</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de resultados -->
+    <div id="result-screen" class="hidden text-center">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">¡Juego Terminado!</h1>
+        <p id="final-score-text" class="text-gray-600 text-lg mb-8"></p>
+        <button id="restart-btn" class="btn">Volver a Jugar</button>
+    </div>
+
+    <!-- Mensaje de carga -->
+    <div id="loading-screen" class="hidden text-center">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Cargando preguntas...</h1>
+        <p class="text-gray-600">Esto puede tardar unos segundos.</p>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Obtenemos los elementos de la interfaz
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const gameScreen = document.getElementById('game-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const questionCounter = document.getElementById('question-counter');
+        const scoreDisplay = document.getElementById('score');
+        const progress = document.getElementById('progress');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackContainer = document.getElementById('feedback-container');
+        const explanationBox = document.getElementById('explanation-box');
+        const nextBtn = document.getElementById('next-btn');
+        const finalScoreText = document.getElementById('final-score-text');
+        const restartBtn = document.getElementById('restart-btn');
+
+        let questions = [
+            {
+                pregunta: "¿Qué tipo de sistemas alternativos de terapia se mencionan en el documento como un tema de gran controversia e interés?",
+                opciones: [
+                    "Sistemas provenientes del movimiento de la Nueva Era",
+                    "Sistemas de terapia conductual",
+                    "Sistemas de terapia cognitiva",
+                    "Sistemas de terapia psicodinámica"
+                ],
+                respuesta_correcta: "Sistemas provenientes del movimiento de la Nueva Era",
+                explicacion: "El documento inicia mencionando que el auge de sistemas alternativos de terapia provenientes del movimiento de la Nueva Era es un tema de gran controversia e interés."
+            },
+            {
+                pregunta: "¿Cuál es el objetivo principal del documento, según el título y el resumen?",
+                opciones: [
+                    "Analizar las terapias alternativas desde una visión del psicoterapeuta alternativo",
+                    "Criticar el uso de terapias alternativas",
+                    "Promover las terapias alternativas como la cuarta fuerza de la psicología",
+                    "Investigar la historia de la psicología"
+                ],
+                respuesta_correcta: "Analizar las terapias alternativas desde una visión del psicoterapeuta alternativo",
+                explicacion: "El título del documento es 'Terapias alternativas, ¿la cuarta fuerza de la psicología?: una visión desde el psicoterapeuta alternativo', lo cual indica su objetivo principal."
+            },
+            {
+                pregunta: "¿Quiénes son las autoras del documento?",
+                opciones: [
+                    "Mariana Tamargo, María Claudia Di Guida e Ysamary Arenas",
+                    "Ana Rodríguez y Pedro Silvera",
+                    "N. Sabaté y A. Strauss",
+                    "E. Tourinho y M. Carvalho"
+                ],
+                respuesta_correcta: "Mariana Tamargo, María Claudia Di Guida e Ysamary Arenas",
+                explicacion: "Las autoras se mencionan en la primera página del documento: Mariana Tamargo, María Claudia Di Guida e Ysamary Arenas."
+            },
+            {
+                pregunta: "¿Cuál de las siguientes afirmaciones sobre las autoras es correcta?",
+                opciones: [
+                    "Las tres son licenciadas en Psicología por la Universidad Metropolitana.",
+                    "Dos son profesoras de la Unimet y una es coordinadora de eventos.",
+                    "Todas tienen doctorados en psicología.",
+                    "Una de ellas trabaja en la Universidad Central de Venezuela."
+                ],
+                respuesta_correcta: "Las tres son licenciadas en Psicología por la Universidad Metropolitana.",
+                explicacion: "Según la información de las autoras en la primera página, las tres son licenciadas en Psicología por la Universidad Metropolitana. Una de ellas también es especialista en psicología clínica de la Universidad Central de Venezuela y profesora de la Unimet."
+            },
+            {
+                pregunta: "¿Qué concepto se menciona en el resumen como un tema de gran controversia debido al auge del movimiento de la Nueva Era?",
+                opciones: [
+                    "Los sistemas alternativos de terapia",
+                    "La psicología clínica",
+                    "La investigación cualitativa",
+                    "La psicoterapia psicodinámica"
+                ],
+                respuesta_correcta: "Los sistemas alternativos de terapia",
+                explicacion: "El resumen del documento destaca que el auge de los sistemas alternativos de terapia es un tema de gran controversia e interés."
+            },
+            {
+                pregunta: "El documento se publicó en el año 2015 en una revista de la Universidad Metropolitana. ¿Cuál es el nombre de la revista?",
+                opciones: [
+                    "Anales de la Universidad Metropolitana",
+                    "Papeles del Psicólogo",
+                    "Tesis de pregrado",
+                    "Bases en la investigación cualitativa"
+                ],
+                respuesta_correcta: "Anales de la Universidad Metropolitana",
+                explicacion: "En la primera y segunda página del documento se puede ver el título de la revista: 'ANALES de la Universidad Metropolitana'."
+            },
+            {
+                pregunta: "¿Cuál de los siguientes no es un autor de los textos referenciados en el documento?",
+                opciones: [
+                    "A. Tourinho",
+                    "P. Rodríguez",
+                    "A. Rodríguez",
+                    "J. Corbin"
+                ],
+                respuesta_correcta: "A. Tourinho",
+                explicacion: "La bibliografía menciona a 'TOURINHO, E. & CARVALHO, M. (1995)', pero no a 'A. Tourinho'. Los otros autores sí están referenciados."
+            },
+            {
+                pregunta: "¿Qué tesis de pregrado se menciona en la bibliografía, relacionada con la medicina tradicional china?",
+                opciones: [
+                    "La medicina tradicional china en Venezuela: serie de microprogramas radiofónicos",
+                    "Las fronteras entre la psicología y las prácticas alternativas",
+                    "La investigación de resultados y el futuro de la psicoterapia",
+                    "La psicoterapia psicodinámica"
+                ],
+                respuesta_correcta: "La medicina tradicional china en Venezuela: serie de microprogramas radiofónicos",
+                explicacion: "En la página 20, la bibliografía menciona: 'RODRÍGUEZ, P. & SILVERA, Y. (2007, octubre). La medicina tradicional china en Venezuela: serie de microprogramas radiofónicos (Tesis de pregrado)...'"
+            },
+            {
+                pregunta: "El documento hace referencia a la tesis de pregrado de Rodríguez, P. y Silvera, Y. ¿A qué universidad pertenecían las autoras de esta tesis?",
+                opciones: [
+                    "Universidad Central de Venezuela",
+                    "Universidad Metropolitana",
+                    "Universidad de Antioquia",
+                    "Pearson Prentice Hall"
+                ],
+                respuesta_correcta: "Universidad Central de Venezuela",
+                explicacion: "La referencia completa en la bibliografía indica: 'Universidad Central de Venezuela, Caracas, Venezuela.'"
+            },
+            {
+                pregunta: "Según la nota 3 en la primera página, ¿qué especialidad tiene Ysamary Arenas?",
+                opciones: [
+                    "Psicología clínica de la Universidad Central de Venezuela",
+                    "Marketing",
+                    "Investigación cualitativa",
+                    "Medicina tradicional china"
+                ],
+                respuesta_correcta: "Psicología clínica de la Universidad Central de Venezuela",
+                explicacion: "La nota 3 dice: 'Licenciada en Psicología por la Universidad Metropolitana. Especialista en psicología clínica de la Universidad Central de Venezuela.'"
+            }
+        ];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isAnswered = false;
+
+        // Función para cargar las preguntas. Ahora las preguntas están pre-cargadas.
+        function loadQuestions() {
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            displayQuestion();
+        }
+
+        // Función para mostrar la pregunta actual
+        function displayQuestion() {
+            isAnswered = false;
+            feedbackContainer.classList.add('hidden');
+            explanationBox.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            optionsContainer.innerHTML = '';
+            
+            const currentQuestion = questions[currentQuestionIndex];
+            questionCounter.textContent = `Pregunta ${currentQuestionIndex + 1} de ${questions.length}`;
+            questionText.textContent = currentQuestion.pregunta;
+            scoreDisplay.textContent = `Puntaje: ${score}`;
+
+            currentQuestion.opciones.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('option-btn');
+                button.addEventListener('click', () => handleAnswer(option));
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        // Función para manejar la respuesta del usuario
+        function handleAnswer(selectedOption) {
+            if (isAnswered) return;
+            isAnswered = true;
+
+            const currentQuestion = questions[currentQuestionIndex];
+            const optionButtons = optionsContainer.querySelectorAll('.option-btn');
+            
+            feedbackContainer.classList.remove('hidden');
+            nextBtn.classList.remove('hidden');
+
+            optionButtons.forEach(button => {
+                button.classList.add('disabled');
+                if (button.textContent === currentQuestion.respuesta_correcta) {
+                    button.classList.add('correct');
+                }
+                if (button.textContent === selectedOption && selectedOption !== currentQuestion.respuesta_correcta) {
+                    button.classList.add('wrong');
+                    explanationBox.classList.remove('hidden');
+                    explanationBox.innerHTML = `<p class="font-bold">Incorrecto.</p><p>${currentQuestion.explicacion}</p>`;
+                }
+            });
+
+            if (selectedOption === currentQuestion.respuesta_correcta) {
+                score++;
+                scoreDisplay.textContent = `Puntaje: ${score}`;
+            }
+        }
+
+        // Función para pasar a la siguiente pregunta
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                // Actualizar la barra de progreso
+                const progressPercentage = ((currentQuestionIndex) / questions.length) * 100;
+                progress.style.width = `${progressPercentage}%`;
+                progress.textContent = `${Math.floor(progressPercentage)}%`;
+                displayQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        // Función para mostrar los resultados finales
+        function showResults() {
+            gameScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            finalScoreText.textContent = `Tu puntaje final es de ${score} de ${questions.length}.`;
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', loadQuestions);
+        nextBtn.addEventListener('click', nextQuestion);
+        restartBtn.addEventListener('click', () => {
+            currentQuestionIndex = 0;
+            score = 0;
+            progress.style.width = '0%';
+            progress.textContent = '0%';
+            resultScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+    });
+</script>
+
+</body>
+</html>
+
